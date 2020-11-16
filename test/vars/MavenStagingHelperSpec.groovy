@@ -81,11 +81,11 @@ class MavenStagingHelperSpec extends JenkinsPipelineSpecification {
     def "[MavenStagingHelper.groovy] full process"() {
         setup:
         def helper = new MavenStagingHelper(steps)
-        when:
         helper.withNexusReleaseUrl('NEXUS_URL')
             .withNexusReleaseRepositoryId('NEXUS_REPOSITORY_ID')
             .withStagingDescription('DESCRIPTION')
         helper.stageLocalArtifacts('STAGE_PROFILE_ID', 'FOLDER')
+        when:
         helper.promoteStagingRepository('BUILD_PROMOTE_ID')
         then:
         2 * getPipelineMock("sh")([script: 'mvn -B -q help:evaluate -Dexpression=project.artifactId -DforceStdout', returnStdout: true]) >> { return 'NAME' }

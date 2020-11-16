@@ -85,7 +85,7 @@ def class MavenStagingHelper {
 
     Properties retrieveStagingProperties(String folder){
         String repositoryPropsFile = steps.sh(script: "find ${folder} -name *.properties", returnStdout: true).trim()
-        echo "Got staging properties file ${repositoryPropsFile}"
+        println "[INFO] Got staging properties file ${repositoryPropsFile}"
         assert repositoryPropsFile: 'No staging properties file has been found'
         
         return steps.readProperties(file: repositoryPropsFile)
