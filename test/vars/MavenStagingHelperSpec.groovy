@@ -81,18 +81,17 @@ class MavenStagingHelperSpec extends JenkinsPipelineSpecification {
     def "[MavenStagingHelper.groovy] full process"() {
         setup:
         def helper = new MavenStagingHelper(steps)
-        helper.withNexusReleaseUrl('NEXUS_URL')
-            .withNexusReleaseRepositoryId('NEXUS_REPOSITORY_ID')
-            .withStagingDescription('DESCRIPTION')
+                        .withNexusReleaseUrl('NEXUS_URL')
+                        .withNexusReleaseRepositoryId('NEXUS_REPOSITORY_ID')
+                        .withStagingDescription('DESCRIPTION')
+        getPipelineMock("sh")([script: 'mvn -B -q help:evaluate -Dexpression=project.artifactId -DforceStdout', returnStdout: true]) >> { return 'NAME' }
+        getPipelineMock("sh")([script: 'mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout', returnStdout: true]) >> { return 'VS' }
+        getPipelineMock("sh")([script: 'find FOLDER -name *.properties', returnStdout: true]) >> { return 'file.properties' }
+        getPipelineMock("readProperties")([file: 'file.properties']) >> { return ['stagingRepository.id':'STAGING_ID'] }
         helper.stageLocalArtifacts('STAGE_PROFILE_ID', 'FOLDER')
         when:
         helper.promoteStagingRepository('BUILD_PROMOTE_ID')
         then:
-        2 * getPipelineMock("sh")([script: 'mvn -B -q help:evaluate -Dexpression=project.artifactId -DforceStdout', returnStdout: true]) >> { return 'NAME' }
-        2 * getPipelineMock("sh")([script: 'mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout', returnStdout: true]) >> { return 'VS' }
-        1 * getPipelineMock("sh")([script: "mvn -B --projects :NAME org.sonatype.plugins:nexus-staging-maven-plugin:1.6.5:deploy-staged-repository -DnexusUrl=NEXUS_URL -DserverId=NEXUS_REPOSITORY_ID -DstagingDescription='DESCRIPTION' -DkeepStagingRepositoryOnCloseRuleFailure=true -DstagingProgressTimeoutMinutes=10 -DrepositoryDirectory=FOLDER -DstagingProfileId=STAGE_PROFILE_ID", returnStdout: false])
-        1 * getPipelineMock("sh")([script: 'find FOLDER -name *.properties', returnStdout: true]) >> { return 'file.properties' }
-        1 * getPipelineMock("readProperties")([file: 'file.properties']) >> { return ['stagingRepository.id':'STAGING_ID'] }
         1 * getPipelineMock("sh")([script: "mvn -B --projects :NAME org.sonatype.plugins:nexus-staging-maven-plugin:1.6.5:promote -DnexusUrl=NEXUS_URL -DserverId=NEXUS_REPOSITORY_ID -DstagingDescription='DESCRIPTION' -DbuildPromotionProfileId=BUILD_PROMOTE_ID -DstagingRepositoryId=STAGING_ID", returnStdout: false])
     }
 }
