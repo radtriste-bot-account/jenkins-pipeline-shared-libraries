@@ -42,7 +42,7 @@ def class MavenCommand {
     }
 
     MavenCommand withSettingsXmlId(String settingsXmlId){
-        steps.configFileProvider([steps.configFile(fileId: settingsXmlId, variable: 'MAVEN_SETTINGS_XML')]) {
+        steps.configFileProvider([steps.configFile(fileId: settingsXmlId, targetLocation: 'maven-settings.xml', variable: 'MAVEN_SETTINGS_XML')]) {
             withSettingsXmlFile(steps.env['MAVEN_SETTINGS_XML'])
         }
         return this
