@@ -15,7 +15,7 @@ class MavenStagingHelperSpec extends JenkinsPipelineSpecification {
         }
     }
 
-    def "[MavenCommand.groovy] stageLocalArtifacts"() {
+    def "[MavenStagingHelper.groovy] stageLocalArtifacts"() {
         setup:
         def helper = new MavenStagingHelper(steps)
         when:
@@ -23,13 +23,13 @@ class MavenStagingHelperSpec extends JenkinsPipelineSpecification {
         then:
         1 * getPipelineMock("sh")([script: 'mvn -B -q help:evaluate -Dexpression=project.artifactId -DforceStdout', returnStdout: true]) >> { return 'NAME' }
         1 * getPipelineMock("sh")([script: 'mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout', returnStdout: true]) >> { return 'VS' }
-        1 * getPipelineMock("sh")([script: 'mvn -B --projects NAME org.sonatype.plugins:nexus-staging-maven-plugin:1.6.5:deploy-staged-repository -DnexusUrl=https://repository.jboss.org/nexus -DserverId=jboss-releases-repository -DstagingDescription=\'NAME VS\' -DkeepStagingRepositoryOnCloseRuleFailure=true -DstagingProgressTimeoutMinutes=10 -DrepositoryDirectory=FOLDER -DstagingProfileId=ID', returnStdout: false])
+        1 * getPipelineMock("sh")([script: "mvn -B --projects :NAME org.sonatype.plugins:nexus-staging-maven-plugin:1.6.5:deploy-staged-repository -DnexusUrl=https://repository.jboss.org/nexus -DserverId=jboss-releases-repository -DstagingDescription='NAME VS' -DkeepStagingRepositoryOnCloseRuleFailure=true -DstagingProgressTimeoutMinutes=10 -DrepositoryDirectory=FOLDER -DstagingProfileId=ID", returnStdout: false])
         1 * getPipelineMock("sh")([script: 'find FOLDER -name *.properties', returnStdout: true]) >> { return 'file.properties' }
         1 * getPipelineMock("readProperties")([file: 'file.properties']) >> { return ['stagingRepository.id':'STAGING_ID'] }
         'STAGING_ID' == helper.stagingRepositoryId
     }
 
-    def "[MavenCommand.groovy] stageLocalArtifacts empty stagingProfileId"() {
+    def "[MavenStagingHelper.groovy] stageLocalArtifacts empty stagingProfileId"() {
         setup:
         def helper = new MavenStagingHelper(steps)
         when:
@@ -38,12 +38,61 @@ class MavenStagingHelperSpec extends JenkinsPipelineSpecification {
         thrown(AssertionError)
     }
 
-    def "[MavenCommand.groovy] stageLocalArtifacts empty artifacts folder"() {
+    def "[MavenStagingHelper.groovy] stageLocalArtifacts empty artifacts folder"() {
         setup:
         def helper = new MavenStagingHelper(steps)
         when:
         helper.stageLocalArtifacts('ID', '')
         then:
         thrown(AssertionError)
-    }   
+    }
+
+    def "[MavenStagingHelper.groovy] promoteStagingRepository"() {
+        setup:
+        def helper = new MavenStagingHelper(steps)
+        when:
+        helper.withStagingRepositoryId('STAGING_ID')
+            .promoteStagingRepository('ID')
+        then:
+        1 * getPipelineMock("sh")([script: 'mvn -B -q help:evaluate -Dexpression=project.artifactId -DforceStdout', returnStdout: true]) >> { return 'NAME' }
+        1 * getPipelineMock("sh")([script: 'mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout', returnStdout: true]) >> { return 'VS' }
+        1 * getPipelineMock("sh")([script: "mvn -B --projects :NAME org.sonatype.plugins:nexus-staging-maven-plugin:1.6.5:promote -DnexusUrl=https://repository.jboss.org/nexus -DserverId=jboss-releases-repository -DstagingDescription='NAME VS' -DbuildPromotionProfileId=ID -DstagingRepositoryId=STAGING_ID", returnStdout: false])
+    }
+
+    def "[MavenStagingHelper.groovy] promoteStagingRepository empty buildPromotionProfileId"() {
+        setup:
+        def helper = new MavenStagingHelper(steps)
+        when:
+        helper.withStagingRepositoryId('STAGING_ID')
+            .promoteStagingRepository('')
+        then:
+        thrown(AssertionError)
+    }
+
+    def "[MavenStagingHelper.groovy] promoteStagingRepository no stagingRepositoryId"() {
+        setup:
+        def helper = new MavenStagingHelper(steps)
+        when:
+        helper.promoteStagingRepository('ID')
+        then:
+        thrown(AssertionError)
+    }
+
+    def "[MavenStagingHelper.groovy] full process"() {
+        setup:
+        def helper = new MavenStagingHelper(steps)
+        when:
+        helper.withNexusReleaseUrl('NEXUS_URL')
+            .withNexusReleaseRepositoryId('NEXUS_REPOSITORY_ID')
+            .withStagingDescription('DESCRIPTION')
+        helper.stageLocalArtifacts('STAGE_PROFILE_ID', 'FOLDER')
+        helper.promoteStagingRepository('BUILD_PROMOTE_ID')
+        then:
+        2 * getPipelineMock("sh")([script: 'mvn -B -q help:evaluate -Dexpression=project.artifactId -DforceStdout', returnStdout: true]) >> { return 'NAME' }
+        2 * getPipelineMock("sh")([script: 'mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout', returnStdout: true]) >> { return 'VS' }
+        1 * getPipelineMock("sh")([script: "mvn -B --projects :NAME org.sonatype.plugins:nexus-staging-maven-plugin:1.6.5:deploy-staged-repository -DnexusUrl=NEXUS_URL -DserverId=NEXUS_REPOSITORY_ID -DstagingDescription='DESCRIPTION' -DkeepStagingRepositoryOnCloseRuleFailure=true -DstagingProgressTimeoutMinutes=10 -DrepositoryDirectory=FOLDER -DstagingProfileId=STAGE_PROFILE_ID", returnStdout: false])
+        1 * getPipelineMock("sh")([script: 'find FOLDER -name *.properties', returnStdout: true]) >> { return 'file.properties' }
+        1 * getPipelineMock("readProperties")([file: 'file.properties']) >> { return ['stagingRepository.id':'STAGING_ID'] }
+        1 * getPipelineMock("sh")([script: "mvn -B --projects :NAME org.sonatype.plugins:nexus-staging-maven-plugin:1.6.5:promote -DnexusUrl=NEXUS_URL -DserverId=NEXUS_REPOSITORY_ID -DstagingDescription='DESCRIPTION' -DbuildPromotionProfileId=BUILD_PROMOTE_ID -DstagingRepositoryId=STAGING_ID", returnStdout: false])
+    }
 }

@@ -54,12 +54,13 @@ def class MavenStagingHelper {
     MavenCommand getDefaultMavenCommand(){
         String projectName = getProjectArtifactId()
         String projectVersion = getProjectVersion()
+        String description =  this.stagingDescription ?: "${projectName} ${projectVersion}"
 
         return this.mvnCommand.clone()
-            .withOptions(["--projects :${}"])
+            .withOptions(["--projects :${projectName}"])
             .withProperty('nexusUrl', this.nexusReleaseUrl)
             .withProperty('serverId', this.nexusReleaseRepositoryId)
-            .withProperty('stagingDescription', stagingDescription ?: "'${projectName} ${projectVersion}'")
+            .withProperty('stagingDescription', "'${description}'")
     }
 
     MavenStagingHelper withNexusReleaseUrl(String nexusReleaseUrl) {
@@ -103,6 +104,7 @@ def class MavenStagingHelper {
             .withProperty('forceStdout')
             .returnOutput()
             .run('help:evaluate')
+            .trim()
     }
 
 
