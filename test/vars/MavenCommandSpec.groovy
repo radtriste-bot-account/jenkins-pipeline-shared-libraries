@@ -47,6 +47,26 @@ class MavenCommandSpec extends JenkinsPipelineSpecification {
         1 * getPipelineMock("sh")([script: 'mvn -B -s settingsFileId hello bonjour whatever -Pp1 -Dkey1=value1 -Dkey2 -DskipTests=true -DaltDeploymentRepository=runtimes-artifacts::default::REPOSITORY -Denforcer.skip=true | tee $WORKSPACE/LOG_FILE ; test ${PIPESTATUS[0]} -eq 0', returnStdout: false])
     }
 
+    def "[MavenCommand.groovy] inDirectory"() {
+        setup:
+        def mvnCommand = new MavenCommand(steps)
+        when:
+        mvnCommand.inDirectory('DIR').run('whatever')
+        then:
+        1 * getPipelineMock("dir")(_)
+        1 * getPipelineMock("sh")([script: 'mvn -B whatever', returnStdout: false])
+    }
+
+    def "[MavenCommand.groovy] inDirectory empty"() {
+        setup:
+        def mvnCommand = new MavenCommand(steps)
+        when:
+        mvnCommand.inDirectory('').run('whatever')
+        then:
+        0 * getPipelineMock("dir")(_)
+        1 * getPipelineMock("sh")([script: 'mvn -B whatever', returnStdout: false])
+    }
+
     def "[MavenCommand.groovy] withSettingsXmlId"() {
         setup:
         steps.env = ['MAVEN_SETTINGS_XML':'settingsFileId']

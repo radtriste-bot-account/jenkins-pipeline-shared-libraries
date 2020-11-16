@@ -3,11 +3,12 @@ def class MavenCommand {
     def steps
 
     boolean returnStdout = false
+    String directory = ''
 
     String settingsXmlPath = ''
     List mavenOptions = []
     Map properties = [:]
-    String logFileName = null
+    String logFileName = ''
     List profiles = []
 
     MavenCommand(steps){
@@ -37,8 +38,23 @@ def class MavenCommand {
         if(this.logFileName){
             cmdBuilder.append(" | tee \$WORKSPACE/${this.logFileName} ; test \${PIPESTATUS[0]} -eq 0")
         }
+        if(directory) {
+            def output
+            dir(directory) {
+                output = runCommand(cmdBuilder.toString())
+            }
+            return output
+        } else {
+            return runCommand(cmdBuilder.toString())
+        }
+    }
+    def runCommand(String cmd){
+        return steps.sh(script: cmd, returnStdout: this.returnStdout)
+    }
 
-        return steps.sh(script: cmdBuilder.toString(), returnStdout: this.returnStdout)
+    MavenCommand inDirectory(String directory) {
+        this.directory = directory
+        return this
     }
 
     MavenCommand withSettingsXmlId(String settingsXmlId){
