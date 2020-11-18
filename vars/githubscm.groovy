@@ -100,7 +100,7 @@ def commitChanges(String commitMessage, String filesToAdd = '--all') {
 
 def forkRepo(String credentialID = 'kie-ci') {
     cleanHubAuth()
-    withCredentials([usernamePassword(credentialsId: credentialID, usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PASSWORD')]) {
+    withCredentials([usernamePassword(credentialsId: credentialID, usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
         sh 'git config --global hub.protocol https'
         sh "hub fork --remote-name=origin"
         sh 'git remote -v'
@@ -109,7 +109,7 @@ def forkRepo(String credentialID = 'kie-ci') {
 
 def createPR(String pullRequestTitle, String pullRequestBody = '', String targetBranch = 'master', String credentialID = 'kie-ci') {
     cleanHubAuth()
-    withCredentials([usernamePassword(credentialsId: credentialID, usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PASSWORD')]) {
+    withCredentials([usernamePassword(credentialsId: credentialID, usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
         def pullRequestLink
         try {
             pullRequestLink = sh(returnStdout: true, script: "hub pull-request -m '${pullRequestTitle}' -m '${pullRequestBody}' -b '${targetBranch}'").trim()
@@ -124,7 +124,7 @@ def createPR(String pullRequestTitle, String pullRequestBody = '', String target
 
 def mergePR(String pullRequestLink, String credentialID = 'kie-ci') {
     cleanHubAuth()
-    withCredentials([usernamePassword(credentialsId: credentialID, usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_PASSWORD')]) {
+    withCredentials([usernamePassword(credentialsId: credentialID, usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
         try {
             sh "hub merge ${pullRequestLink}"
         } catch (Exception e) {
@@ -156,9 +156,8 @@ Tag Message: ${tagMessage}
 
 def pushObject(String remote, String object, String credentialsId = 'kie-ci') {
     try {
-        withCredentials([usernamePassword(credentialsId: "${credentialsId}", usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
-            sh("git config --local credential.helper \"!f() { echo username=\\$GIT_USERNAME; echo password=\\$GIT_PASSWORD; }; f\"")
-            sh("git push ${remote} ${object}")
+        withCredentials([usernamePassword(credentialsId: "${credentialsId}", usernameVariable: 'GIT_USERNAME', passwordVariable: 'GITHUB_TOKEN')]) {
+            sh("hub push ${remote} ${object}")
         }
     } catch (Exception e) {
         println "[ERROR] Couldn't push object '${object}' to ${remote}."
